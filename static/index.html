@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Event Reminder - 事件提醒应用</title>
+    <!-- 引入Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 引入Font Awesome -->
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    
+    <!-- Tailwind 配置 -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#3B82F6',
+                        danger: '#EF4444',
+                        warning: '#F59E0B',
+                        success: '#10B981',
+                        neutral: '#9CA3AF'
+                    },
+                }
+            }
+        }
+    </script>
+    
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .card-hover {
+                transition: all 0.3s ease;
+            }
+            .card-hover:hover {
+                transform: translateY(-5px);
+                box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            }
+            .scrollbar-hide {
+                -ms-overflow-style: none;
+                scrollbar-width: none;
+            }
+            .scrollbar-hide::-webkit-scrollbar {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <!-- 顶部栏 -->
+    <header class="bg-white shadow-md py-4">
+        <div class="container mx-auto px-4 flex flex-col md:flex-row justify-between items-center">
+            <div class="flex items-center mb-4 md:mb-0">
+                <i class="fa fa-calendar-check-o text-primary text-2xl mr-3"></i>
+                <h1 class="text-[clamp(1.5rem,3vw,2rem)] font-bold text-gray-800">Event Reminder</h1>
+            </div>
+            
+            <div class="w-full md:w-auto flex flex-col md:flex-row gap-3">
+                <button id="add-event-btn" class="bg-primary hover:bg-primary/90 text-white font-medium py-2 px-4 rounded-lg flex items-center justify-center transition-colors">
+                    <i class="fa fa-plus mr-2"></i>
+                    <span>新增事件</span>
+                </button>
+                
+                <!-- 操作提示开关 -->
+                <div class="flex items-center bg-white px-3 py-2 rounded-lg border border-gray-300">
+                    <i class="fa fa-bell text-primary mr-2"></i>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="notification-toggle" class="sr-only peer" checked>
+                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                        <span class="ml-2 text-sm text-gray-700">通知</span>
+                    </label>
+                </div>
+                
+                <div class="relative">
+                    <input type="text" id="search-input" placeholder="搜索事件..." 
+                           class="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary w-full md:w-64">
+                    <i class="fa fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- 主内容区 -->
+    <main class="container mx-auto px-4 py-8">
+        <!-- 状态过滤器 -->
+        <div class="flex flex-col md:flex-row justify-between items-center mb-8">
+            <div class="inline-flex rounded-md shadow-sm mb-4 md:mb-0" role="group">
+                <button type="button" data-status="active" class="status-filter-btn px-4 py-2 text-sm font-medium text-primary bg-white border border-primary rounded-l-lg hover:bg-primary/10 focus:z-10 focus:ring-2 focus:ring-primary/50 focus:bg-primary/10 focus:text-primary">
+                    活跃
+                </button>
+                <button type="button" data-status="completed" class="status-filter-btn px-4 py-2 text-sm font-medium text-gray-700 bg-white border-t border-b border-gray-300 hover:bg-gray-100 focus:z-10 focus:ring-2 focus:ring-primary/50 focus:bg-primary/10 focus:text-primary">
+                    已完成
+                </button>
+                <button type="button" data-status="all" class="status-filter-btn px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-r-lg hover:bg-gray-100 focus:z-10 focus:ring-2 focus:ring-primary/50 focus:bg-primary/10 focus:text-primary">
+                    全部
+                </button>
+            </div>
+            
+            <!-- 视图切换器 -->
+            <div class="inline-flex rounded-md shadow-sm" role="group">
+                <button type="button" id="list-view-btn" class="view-btn px-4 py-2 text-sm font-medium text-primary bg-white border border-primary rounded-l-lg hover:bg-primary/10 focus:z-10 focus:ring-2 focus:ring-primary/50 focus:bg-primary/10 focus:text-primary">
+                    <i class="fa fa-list mr-2"></i>列表
+                </button>
+                <button type="button" id="calendar-view-btn" class="view-btn px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-r-lg hover:bg-gray-100 focus:z-10 focus:ring-2 focus:ring-primary/50 focus:bg-primary/10 focus:text-primary">
+                    <i class="fa fa-calendar mr-2"></i>日历
+                </button>
+            </div>
+        </div>
+        
+        <!-- 右下角悬浮样式切换按钮 -->
+        <div id="calendar-style-floating" class="fixed bottom-6 right-6 z-40 calendar-style-container hidden">
+            <div class="relative group">
+                <button type="button" id="calendar-style-btn" class="px-4 py-2 text-sm font-medium text-primary bg-white border border-primary rounded-lg hover:bg-primary/10 focus:outline-none shadow-md transition-all duration-300">
+                    <i class="fa fa-th-large mr-2"></i>样式
+                    <i class="fa fa-caret-down ml-1"></i>
+                </button>
+                <div id="calendar-style-dropdown" class="absolute bottom-full right-0 mb-2 w-48 bg-white rounded-lg shadow-lg py-2 z-50 hidden">
+                    <button type="button" id="waterfall-view-btn" class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                        <i class="fa fa-th-large mr-2"></i>瀑布流模式
+                    </button>
+                    <button type="button" id="normal-view-btn" class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                        <i class="fa fa-calendar-o mr-2"></i>普通模式
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 日历视图容器 -->
+        <div id="calendar-container" class="hidden mb-8 bg-white rounded-xl shadow-lg p-6 overflow-hidden">
+            <!-- 日历头部 -->
+            <div class="flex justify-between items-center mb-6 pb-4 border-b border-gray-100">
+                <h2 id="calendar-current-month" class="text-2xl font-bold text-gray-800">2023年10月</h2>
+                <div class="flex gap-2 items-center">
+                    <!-- 点击日期添加事件开关 -->
+                    <div id="quick-add-toggle" class="hidden items-center bg-gray-100 px-3 py-1 rounded-lg">
+                        <span class="text-sm text-gray-700 mr-2">快速添加:</span>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="quick-add-switch" class="sr-only peer">
+                            <div class="w-9 h-5 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div>
+                        </label>
+                    </div>
+                    <button id="prev-month-btn" class="p-2 rounded-full hover:bg-primary/10 focus:outline-none transition-colors">
+                        <i class="fa fa-chevron-left text-gray-700"></i>
+                    </button>
+                    <button id="today-btn" class="px-4 py-2 bg-primary hover:bg-primary/90 text-white rounded-lg font-medium focus:outline-none transition-colors shadow-sm">
+                        今天
+                    </button>
+                    <button id="next-month-btn" class="p-2 rounded-full hover:bg-primary/10 focus:outline-none transition-colors">
+                        <i class="fa fa-chevron-right text-gray-700"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- 星期标题行 -->
+            <div id="calendar-weekdays" class="grid grid-cols-7 text-center font-semibold text-gray-600 mb-3 pb-2">
+                <!-- 星期标题将通过JavaScript生成 -->
+            </div>
+            
+            <!-- 日历格子 -->
+            <div id="calendar-grid" class="grid grid-cols-7 gap-2">
+                <!-- 日历格子将通过JavaScript生成 -->
+            </div>
+        </div>
+        
+        <!-- 事件列表 -->
+        <div id="events-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <!-- 事件卡片将通过JavaScript动态生成 -->
+            <div id="empty-state" class="col-span-full py-16 text-center">
+                <i class="fa fa-calendar-o text-6xl text-gray-300 mb-4"></i>
+                <p class="text-gray-500 text-lg">暂无事件</p>
+                <p class="text-gray-400 mt-2">点击"新增事件"开始创建您的第一个提醒</p>
+            </div>
+        </div>
+    </main>
+
+    <!-- 新增/编辑事件弹窗 -->
+    <div id="event-modal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-md p-6 transform transition-all">
+            <div class="flex justify-between items-center mb-4">
+                <h2 id="modal-title" class="text-xl font-bold text-gray-800">新增事件</h2>
+                <button id="close-modal-btn" class="text-gray-500 hover:text-gray-700 focus:outline-none">
+                    <i class="fa fa-times text-xl"></i>
+                </button>
+            </div>
+            
+            <form id="event-form">
+                <input type="hidden" id="event-id" value="">
+                
+                <div class="mb-4">
+                    <label for="event-title" class="block text-sm font-medium text-gray-700 mb-1">事件标题 <span class="text-danger">*</span></label>
+                    <input type="text" id="event-title" name="title" required 
+                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary">
+                </div>
+                
+                <div class="mb-4">
+                    <label for="event-description" class="block text-sm font-medium text-gray-700 mb-1">事件描述</label>
+                    <textarea id="event-description" name="description" rows="3" 
+                              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"></textarea>
+                </div>
+                
+                <div class="mb-4">
+                    <label for="event-due-at" class="block text-sm font-medium text-gray-700 mb-1">到期时间 <span class="text-danger">*</span></label>
+                    <input type="datetime-local" id="event-due-at" name="due_at" required 
+                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary">
+                </div>
+                
+                <div class="mb-6">
+                    <label for="event-priority" class="block text-sm font-medium text-gray-700 mb-1">优先级</label>
+                    <select id="event-priority" name="priority" 
+                            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary">
+                        <option value="1">高</option>
+                        <option value="2" selected>中</option>
+                        <option value="3">低</option>
+                    </select>
+                </div>
+                
+                <div class="flex justify-end gap-3">
+                    <button type="button" id="cancel-event-btn" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-300">
+                        取消
+                    </button>
+                    <button type="submit" class="px-4 py-2 bg-primary hover:bg-primary/90 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50">
+                        保存
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Toast消息 -->
+    <div id="toast" class="fixed bottom-4 right-4 px-6 py-3 rounded-lg shadow-lg transform transition-all duration-300 translate-y-20 opacity-0 z-50 flex items-center">
+        <i id="toast-icon" class="fa mr-2"></i>
+        <span id="toast-message"></span>
+    </div>
+    
+    <!-- 确认弹窗 -->
+    <div id="confirm-modal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-sm p-6 transform transition-all">
+            <div class="text-center mb-4">
+                <i class="fa fa-question-circle text-4xl text-primary mb-4"></i>
+                <h3 id="confirm-title" class="text-xl font-bold text-gray-800 mb-2">确认操作</h3>
+                <p id="confirm-message" class="text-gray-600">确定要执行此操作吗？</p>
+            </div>
+            
+            <div class="flex justify-center gap-3">
+                <button id="confirm-cancel-btn" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-300">
+                    取消
+                </button>
+                <button id="confirm-ok-btn" class="px-4 py-2 bg-primary hover:bg-primary/90 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50">
+                    确定
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 事件详情弹窗 -->
+    <div id="event-detail-modal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-lg p-6 w-full max-w-md shadow-xl">
+            <div class="flex justify-between items-center mb-4">
+                <h3 id="detail-modal-title" class="text-xl font-bold text-gray-800">事件详情</h3>
+                <button id="detail-close-btn" class="text-gray-500 hover:text-gray-700">
+                    <i class="fa fa-times text-xl"></i>
+                </button>
+            </div>
+            <div id="event-detail-content" class="space-y-4">
+                <!-- 事件详情内容将通过JavaScript动态填充 -->
+            </div>
+            <div class="mt-6 flex justify-end gap-3">
+                <button id="detail-complete-btn" class="px-4 py-2 bg-green-500 hover:bg-green-600 rounded-lg text-white hidden">
+                    <i class="fa fa-check mr-1"></i> 完成
+                </button>
+                <button id="detail-edit-btn" class="px-4 py-2 bg-blue-500 hover:bg-blue-600 rounded-lg text-white">
+                    <i class="fa fa-pencil mr-1"></i> 编辑
+                </button>
+                <button id="detail-delete-btn" class="px-3 py-1.5 bg-red-500 hover:bg-red-600 rounded-lg text-white text-sm">
+                    <i class="fa fa-trash mr-1"></i> 删除
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript -->
+    <script src="script.js"></script>
+</body>
+</html>
